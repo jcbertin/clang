@@ -1364,6 +1364,7 @@ CGObjCGNU::GenerateMessageSend(CodeGenFunction &CGF,
       break;
     case CodeGenOptions::Mixed:
     case CodeGenOptions::NonLegacy:
+    default:
       if (CGM.ReturnTypeUsesFPRet(ResultType)) {
         imp = CGM.CreateRuntimeFunction(llvm::FunctionType::get(IdTy, IdTy, true),
                                   "objc_msgSend_fpret");
