@@ -1787,7 +1787,7 @@ void CGObjCGNU::GenerateProtocol(const ObjCProtocolDecl *PD) {
   // simplify the runtime library by allowing it to use the same data
   // structures for protocol metadata everywhere.
   llvm::StructType *PropertyMetadataTy = llvm::StructType::get(
-          PtrToInt8Ty, Int8Ty, Int8Ty, PtrToInt8Ty, PtrToInt8Ty, PtrToInt8Ty,
+          PtrToInt8Ty, IntTy, Int8Ty, PtrToInt8Ty, PtrToInt8Ty, PtrToInt8Ty,
           PtrToInt8Ty, NULL);
   std::vector<llvm::Constant*> Properties;
   std::vector<llvm::Constant*> OptionalProperties;
@@ -1803,7 +1803,7 @@ void CGObjCGNU::GenerateProtocol(const ObjCProtocolDecl *PD) {
 
     Fields.push_back(MakePropertyEncodingString(property, PD));
 
-    Fields.push_back(llvm::ConstantInt::get(Int8Ty,
+    Fields.push_back(llvm::ConstantInt::get(IntTy,
                 property->getPropertyAttributes()));
     Fields.push_back(llvm::ConstantInt::get(Int8Ty, 0));
     if (ObjCMethodDecl *getter = property->getGetterMethodDecl()) {
@@ -2039,7 +2039,7 @@ llvm::Constant *CGObjCGNU::GeneratePropertyList(const ObjCImplementationDecl *OI
   // Property metadata: name, attributes, isSynthesized, setter name, setter
   // types, getter name, getter types.
   llvm::StructType *PropertyMetadataTy = llvm::StructType::get(
-          PtrToInt8Ty, Int8Ty, Int8Ty, PtrToInt8Ty, PtrToInt8Ty, PtrToInt8Ty,
+          PtrToInt8Ty, IntTy, Int8Ty, PtrToInt8Ty, PtrToInt8Ty, PtrToInt8Ty,
           PtrToInt8Ty, NULL);
   std::vector<llvm::Constant*> Properties;
 
@@ -2056,7 +2056,7 @@ llvm::Constant *CGObjCGNU::GeneratePropertyList(const ObjCImplementationDecl *OI
         ObjCPropertyImplDecl::Synthesize);
 
     Fields.push_back(MakePropertyEncodingString(property, OID));
-    Fields.push_back(llvm::ConstantInt::get(Int8Ty,
+    Fields.push_back(llvm::ConstantInt::get(IntTy,
                 property->getPropertyAttributes()));
     Fields.push_back(llvm::ConstantInt::get(Int8Ty, isSynthesized));
     if (ObjCMethodDecl *getter = property->getGetterMethodDecl()) {
