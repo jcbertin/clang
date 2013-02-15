@@ -1812,7 +1812,11 @@ void CGObjCGNU::GenerateProtocol(const ObjCProtocolDecl *PD) {
         std::string GetterStr;
         Context.getObjCEncodingForMethodDecl(getter,GetterStr);
         InstanceMethodTypes.push_back(MakeConstantString(GetterStr));
-        Fields.push_back(MakeConstantString(getter->getSelector().getAsString()));
+        if (property->getPropertyAttributes() & ObjCPropertyDecl::OBJC_PR_getter) {
+          Fields.push_back(MakeConstantString(getter->getSelector().getAsString()));
+        } else {
+          Fields.push_back(NULLPtr);
+        }
       } else {
         Fields.push_back(NULLPtr);
       }
@@ -1821,7 +1825,11 @@ void CGObjCGNU::GenerateProtocol(const ObjCProtocolDecl *PD) {
         std::string SetterStr;
         Context.getObjCEncodingForMethodDecl(setter,SetterStr);
         InstanceMethodTypes.push_back(MakeConstantString(SetterStr));
-        Fields.push_back(MakeConstantString(setter->getSelector().getAsString()));
+        if (property->getPropertyAttributes() & ObjCPropertyDecl::OBJC_PR_setter) {
+          Fields.push_back(MakeConstantString(setter->getSelector().getAsString()));
+        } else {
+          Fields.push_back(NULLPtr);
+        }
       } else {
         Fields.push_back(NULLPtr);
       }
@@ -1829,8 +1837,45 @@ void CGObjCGNU::GenerateProtocol(const ObjCProtocolDecl *PD) {
       std::string AttrsStr;
       Context.getObjCEncodingForPropertyDecl(property, NULL, AttrsStr);
       Fields.push_back(MakeConstantString(AttrsStr));
-      Fields.push_back(llvm::ConstantInt::get(IntTy,
-                property->getPropertyAttributes()));
+      unsigned int Attrs = property->getPropertyAttributes();
+      if (property->isReadOnly()) {
+        Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                   ObjCPropertyDecl::OBJC_PR_retain |
+                   ObjCPropertyDecl::OBJC_PR_copy |
+                   ObjCPropertyDecl::OBJC_PR_weak |
+                   ObjCPropertyDecl::OBJC_PR_strong);
+      } else {
+        switch (property->getSetterKind()) {
+        case ObjCPropertyDecl::Assign:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_retain |
+                     ObjCPropertyDecl::OBJC_PR_copy |
+                     ObjCPropertyDecl::OBJC_PR_weak |
+                     ObjCPropertyDecl::OBJC_PR_strong);
+          break;
+        case ObjCPropertyDecl::Copy:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                     ObjCPropertyDecl::OBJC_PR_retain |
+                     ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_weak |
+                     ObjCPropertyDecl::OBJC_PR_strong);
+          break;          
+        case ObjCPropertyDecl::Retain:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                     ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_copy |
+                     ObjCPropertyDecl::OBJC_PR_weak);
+          break;          
+        case ObjCPropertyDecl::Weak:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                     ObjCPropertyDecl::OBJC_PR_retain |
+                     ObjCPropertyDecl::OBJC_PR_copy |
+                     ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_strong);
+          break;          
+        }
+      }
+      Fields.push_back(llvm::ConstantInt::get(IntTy, Attrs));
       if (property->getPropertyImplementation() == ObjCPropertyDecl::Optional) {
         OptionalProperties.push_back(llvm::ConstantStruct::get(PropertyMetadataTy, Fields));
       } else {
@@ -2132,7 +2177,11 @@ llvm::Constant *CGObjCGNU::GeneratePropertyList(const ObjCImplementationDecl *OI
           InstanceMethodTypes.push_back(MakeConstantString(GetterStr));
           InstanceMethodSels.push_back(getter->getSelector());
         }
-        Fields.push_back(MakeConstantString(getter->getSelector().getAsString()));
+        if (property->getPropertyAttributes() & ObjCPropertyDecl::OBJC_PR_getter) {
+          Fields.push_back(MakeConstantString(getter->getSelector().getAsString()));
+        } else {
+          Fields.push_back(NULLPtr);
+        }
       } else {
         Fields.push_back(NULLPtr);
       }
@@ -2143,7 +2192,11 @@ llvm::Constant *CGObjCGNU::GeneratePropertyList(const ObjCImplementationDecl *OI
           InstanceMethodTypes.push_back(MakeConstantString(SetterStr));
           InstanceMethodSels.push_back(setter->getSelector());
         }
-        Fields.push_back(MakeConstantString(setter->getSelector().getAsString()));
+        if (property->getPropertyAttributes() & ObjCPropertyDecl::OBJC_PR_setter) {
+          Fields.push_back(MakeConstantString(setter->getSelector().getAsString()));
+        } else {
+          Fields.push_back(NULLPtr);
+        }
       } else {
         Fields.push_back(NULLPtr);
       }
@@ -2157,6 +2210,43 @@ llvm::Constant *CGObjCGNU::GeneratePropertyList(const ObjCImplementationDecl *OI
       Context.getObjCEncodingForPropertyDecl(property, OID, AttrsStr);
       Fields.push_back(MakeConstantString(AttrsStr));
       unsigned int Attrs = property->getPropertyAttributes();
+      if (property->isReadOnly()) {
+        Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                   ObjCPropertyDecl::OBJC_PR_retain |
+                   ObjCPropertyDecl::OBJC_PR_copy |
+                   ObjCPropertyDecl::OBJC_PR_weak |
+                   ObjCPropertyDecl::OBJC_PR_strong);
+      } else {
+        switch (property->getSetterKind()) {
+        case ObjCPropertyDecl::Assign:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_retain |
+                     ObjCPropertyDecl::OBJC_PR_copy |
+                     ObjCPropertyDecl::OBJC_PR_weak |
+                     ObjCPropertyDecl::OBJC_PR_strong);
+          break;
+        case ObjCPropertyDecl::Copy:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                     ObjCPropertyDecl::OBJC_PR_retain |
+                     ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_weak |
+                     ObjCPropertyDecl::OBJC_PR_strong);
+          break;          
+        case ObjCPropertyDecl::Retain:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                     ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_copy |
+                     ObjCPropertyDecl::OBJC_PR_weak);
+          break;          
+        case ObjCPropertyDecl::Weak:
+          Attrs &= ~(ObjCPropertyDecl::OBJC_PR_assign |
+                     ObjCPropertyDecl::OBJC_PR_retain |
+                     ObjCPropertyDecl::OBJC_PR_copy |
+                     ObjCPropertyDecl::OBJC_PR_readonly |
+                     ObjCPropertyDecl::OBJC_PR_strong);
+          break;          
+        }
+      }
       if (propertyImpl->getPropertyImplementation()==ObjCPropertyImplDecl::Dynamic) {
         Attrs |= ObjCPropertyDecl::OBJC_PR_dynamic;
       }
