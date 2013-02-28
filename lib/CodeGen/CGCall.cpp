@@ -26,6 +26,7 @@
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/InlineAsm.h"
+#include "llvm/MC/SubtargetFeature.h"
 #include "llvm/Support/CallSite.h"
 #include "llvm/Transforms/Utils/Local.h"
 using namespace clang;
@@ -968,7 +969,8 @@ llvm::Type *CodeGenTypes::GetFunctionTypeForVTable(GlobalDecl GD) {
 void CodeGenModule::ConstructAttributeList(const CGFunctionInfo &FI,
                                            const Decl *TargetDecl,
                                            AttributeListType &PAL,
-                                           unsigned &CallingConv) {
+                                           unsigned &CallingConv,
+                                           bool AttrOnCallSite) {
   llvm::AttrBuilder FuncAttrs;
   llvm::AttrBuilder RetAttrs;
 
@@ -1014,6 +1016,12 @@ void CodeGenModule::ConstructAttributeList(const CGFunctionInfo &FI,
     FuncAttrs.addAttribute(llvm::Attribute::NoRedZone);
   if (CodeGenOpts.NoImplicitFloat)
     FuncAttrs.addAttribute(llvm::Attribute::NoImplicitFloat);
+
+  if (AttrOnCallSite) {
+    // Attributes that should go on the call site only.
+    if (!CodeGenOpts.SimplifyLibCalls)
+      FuncAttrs.addAttribute(llvm::Attribute::NoBuiltin);
+  }
 
   QualType RetTy = FI.getReturnType();
   unsigned Index = 1;
@@ -2225,9 +2233,10 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
 
   unsigned CallingConv;
   CodeGen::AttributeListType AttributeList;
-  CGM.ConstructAttributeList(CallInfo, TargetDecl, AttributeList, CallingConv);
+  CGM.ConstructAttributeList(CallInfo, TargetDecl, AttributeList,
+                             CallingConv, true);
   llvm::AttributeSet Attrs = llvm::AttributeSet::get(getLLVMContext(),
-                                                   AttributeList);
+                                                     AttributeList);
 
   llvm::BasicBlock *InvokeDest = 0;
   if (!Attrs.hasAttribute(llvm::AttributeSet::FunctionIndex,

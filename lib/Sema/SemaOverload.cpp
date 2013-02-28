@@ -967,7 +967,7 @@ Sema::CheckOverload(Scope *S, FunctionDecl *New, const LookupResult &Old,
 static bool canBeOverloaded(const FunctionDecl &D) {
   if (D.getAttr<OverloadableAttr>())
     return true;
-  if (D.hasCLanguageLinkage())
+  if (D.isExternC())
     return false;
 
   // Main cannot be overloaded (basic.start.main).
@@ -1667,11 +1667,7 @@ static bool IsStandardConversion(Sema &S, Expr* From, QualType ToType,
     CanonTo = S.Context.getCanonicalType(ToType);
     if (CanonFrom.getLocalUnqualifiedType()
                                        == CanonTo.getLocalUnqualifiedType() &&
-        (CanonFrom.getLocalCVRQualifiers() != CanonTo.getLocalCVRQualifiers()
-         || CanonFrom.getObjCGCAttr() != CanonTo.getObjCGCAttr()
-         || CanonFrom.getObjCLifetime() != CanonTo.getObjCLifetime()
-         || (CanonFrom->isSamplerT() && 
-           CanonFrom.getAddressSpace() != CanonTo.getAddressSpace()))) {
+        CanonFrom.getLocalQualifiers() != CanonTo.getLocalQualifiers()) {
       FromType = ToType;
       CanonFrom = CanonTo;
     }
@@ -9916,7 +9912,6 @@ static ExprResult FinishOverloadedCallExpr(Sema &SemaRef, Scope *S, Expr *Fn,
   switch (OverloadResult) {
   case OR_Success: {
     FunctionDecl *FDecl = (*Best)->Function;
-    SemaRef.MarkFunctionReferenced(Fn->getExprLoc(), FDecl);
     SemaRef.CheckUnresolvedLookupAccess(ULE, (*Best)->FoundDecl);
     SemaRef.DiagnoseUseOfDecl(FDecl, ULE->getNameLoc());
     Fn = SemaRef.FixOverloadedFunctionReference(Fn, (*Best)->FoundDecl, FDecl);
@@ -10799,7 +10794,6 @@ Sema::BuildCallToMemberFunction(Scope *S, Expr *MemExprE,
                                             Best)) {
     case OR_Success:
       Method = cast<CXXMethodDecl>(Best->Function);
-      MarkFunctionReferenced(UnresExpr->getMemberLoc(), Method);
       FoundDecl = Best->FoundDecl;
       CheckUnresolvedMemberAccess(UnresExpr, Best->FoundDecl);
       DiagnoseUseOfDecl(Best->FoundDecl, UnresExpr->getNameLoc());
